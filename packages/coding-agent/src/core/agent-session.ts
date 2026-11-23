@@ -1960,6 +1960,12 @@ export class AgentSession {
 		this._agentRunAbortRequested = false;
 		let messages: AgentMessage[];
 		try {
+			/*
+			          │      ├── 必要时压缩上下文
+						│      ├── before_agent_start 扩展钩子
+						│      ├── 准备工具和 System Prompt
+						│      └── 构建 UserMessage
+			*/
 			messages = await this._prepareRun(trigger);
 		} catch (error) {
 			this._isAgentRunActive = false;
@@ -2174,6 +2180,26 @@ export class AgentSession {
 	 * @throws Error if streaming and no streamingBehavior specified
 	 * @throws Error if no model selected or no API key available (when not streaming)
 	 */
+	/*
+
+	packages/coding-agent/src/modes/interactive/interactive-mode.ts 中 InteractiveMode.run() 中有这样一段很直观的代码：
+
+	// Main interactive loop
+	while (true) {
+	const userInput = await this.getUserInput();
+
+	try {
+		await this.session.prompt(userInput);
+	} catch (error: unknown) {
+		const errorMessage =
+		error instanceof Error
+			? error.message
+			: "Unknown error occurred";
+
+		this.showError(errorMessage);
+	}
+	}
+	*/
 	async prompt(text: string, options?: PromptOptions): Promise<void> {
 		if (this._isEmittingAgentSettled) {
 			this._deferredSettledActions.push(async () => await this.prompt(text, options));
@@ -2203,6 +2229,13 @@ export class AgentSession {
 		this._promptPreflightCount++;
 		let trigger: BeforeAgentStartTrigger | undefined;
 		try {
+			/*
+			   │      ├── 执行输入扩展钩子
+				│      ├── 展开 Skill / Prompt Template
+				│      ├── 检查是否需要排队
+				│      ├── 验证当前 model
+				│      └── 验证 Provider 认证信息
+			*/
 			trigger = await this._preparePrompt(text, options);
 		} finally {
 			this._promptPreflightCount--;

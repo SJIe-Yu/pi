@@ -603,16 +603,21 @@ export interface MainOptions {
 }
 
 export async function main(args: string[], options?: MainOptions) {
+	// 设置性能计时器
 	resetTimings();
 	// Commands and startup selectors can load user-authored themes before runtime creation.
+	// 主题校验器
 	setThemeJsonValidator(validateThemeJson);
+	// 合并内置扩展和外部注入的扩展
 	const extensionFactories = [...builtInExtensions, ...(options?.extensionFactories ?? [])];
+	// 检查是否离线
 	const offlineMode = args.includes("--offline") || isTruthyEnvFlag(process.env.PI_OFFLINE);
 	if (offlineMode) {
 		process.env.PI_OFFLINE = "1";
 		process.env.PI_SKIP_VERSION_CHECK = "1";
 	}
 
+	// 例如 pi auth login 属于身份验证操作，可以单独处理并结束
 	if (await runAuthCommand(args)) {
 		return;
 	}
@@ -661,7 +666,7 @@ export async function main(args: string[], options?: MainOptions) {
 		process.exitCode = await runMcpCommand(args.slice(1), { cwd, agentDir });
 		return;
 	}
-
+	// 将字符串数组转换为结构化 Args 对象
 	const parsed = parseArgs(args);
 	if (parsed.diagnostics.length > 0) {
 		for (const d of parsed.diagnostics) {
@@ -692,7 +697,7 @@ export async function main(args: string[], options?: MainOptions) {
 		console.log(`Exported to: ${result}`);
 		process.exit(0);
 	}
-
+	// 确定运行模式
 	let appMode = resolveAppMode(parsed, process.stdin.isTTY, process.stdout.isTTY);
 	const shouldTakeOverStdout = appMode !== "interactive" && !isPlainRuntimeMetadataCommand(parsed);
 	if (shouldTakeOverStdout) {

@@ -20,8 +20,11 @@ interface SourceAlias {
 	readonly replacements: readonly string[];
 }
 
+// 获取到仓库的绝对路径
 const repositoryRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+// tsconfig path
 const tsconfigPath = resolve(repositoryRoot, "tsconfig.json");
+// tsconfig
 const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8")) as TsConfig;
 const paths = tsconfig.compilerOptions?.paths;
 if (!paths) throw new Error(`Source runtime requires compilerOptions.paths in ${tsconfigPath}`);
@@ -43,6 +46,11 @@ const aliases: SourceAlias[] = Object.entries(paths)
 	.sort((left, right) => right.pattern.length - left.pattern.length);
 
 registerHooks({
+	/*
+	specifier：当前要导入的模块名称，例如 @earendil-works/pi-ai。
+	context：本次模块解析的上下文信息。
+	nextResolve：把解析工作交给后续解析器。
+	*/
 	resolve(specifier, context, nextResolve) {
 		let matchedPattern: string | undefined;
 		for (const alias of aliases) {
@@ -62,11 +70,15 @@ registerHooks({
 });
 
 function matchAlias(alias: SourceAlias, specifier: string): string | undefined {
+	// 没有星号，必须整段相同
 	if (!alias.pattern.includes("*")) return specifier === alias.pattern ? "" : undefined;
+	// 有星号，检查两端 ​
 	if (!specifier.startsWith(alias.prefix) || !specifier.endsWith(alias.suffix)) return undefined;
+	// 把两端剪掉，留下中间部分
 	return specifier.slice(alias.prefix.length, specifier.length - alias.suffix.length);
 }
 
+// 这个函数接收替换后的路径文字，例如 ./packages/ai/src/index.ts。它返回找到的绝对文件路径，或者 undefined。
 function resolveSourcePath(replacement: string): string | undefined {
 	const basePath = resolve(repositoryRoot, replacement);
 	const rootPrefix = repositoryRoot.endsWith(sep) ? repositoryRoot : `${repositoryRoot}${sep}`;
